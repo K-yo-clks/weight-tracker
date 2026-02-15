@@ -283,6 +283,83 @@
             color: #667eea;
         }
 
+        /* カロリー表示用のスタイル */
+        .calorie-display {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .calorie-display.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .calorie-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .bmr-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .bmr-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .bmr-label {
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .activity-levels {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .activity-desc {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .activity-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
         @media (max-width: 768px) {
             .cards {
                 grid-template-columns: 1fr;
@@ -290,6 +367,12 @@
             
             .stat-box {
                 font-size: 0.9em;
+            }
+
+            .activity-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
             }
         }
 
@@ -353,6 +436,62 @@
                     </select>
                 </div>
                 <button onclick="saveProfile()">💾 プロフィール保存</button>
+            </div>
+
+            <!-- カロリー情報 -->
+            <div class="card">
+                <h2>🔥 推奨カロリー</h2>
+                <div id="calorieDisplay" class="calorie-display">
+                    <div class="bmr-box">
+                        <div class="bmr-value" id="bmrValue">--</div>
+                        <div class="bmr-label">基礎代謝量 (BMR)</div>
+                        <div style="font-size: 0.85em; color: #999; margin-top: 5px;">
+                            ※何もしなくても消費されるカロリー
+                        </div>
+                    </div>
+                    
+                    <div class="calorie-title">活動レベル別 推奨摂取カロリー</div>
+                    <div class="activity-levels">
+                        <div class="activity-item">
+                            <div>
+                                <div class="activity-label">🛋️ 座りがち</div>
+                                <div class="activity-desc">ほぼ運動しない</div>
+                            </div>
+                            <div class="activity-value" id="cal1">--</div>
+                        </div>
+                        <div class="activity-item">
+                            <div>
+                                <div class="activity-label">🚶 軽い運動</div>
+                                <div class="activity-desc">週1-3回の運動</div>
+                            </div>
+                            <div class="activity-value" id="cal2">--</div>
+                        </div>
+                        <div class="activity-item">
+                            <div>
+                                <div class="activity-label">🏃 中程度の運動</div>
+                                <div class="activity-desc">週3-5回の運動</div>
+                            </div>
+                            <div class="activity-value" id="cal3">--</div>
+                        </div>
+                        <div class="activity-item">
+                            <div>
+                                <div class="activity-label">💪 激しい運動</div>
+                                <div class="activity-desc">週6-7回の運動</div>
+                            </div>
+                            <div class="activity-value" id="cal4">--</div>
+                        </div>
+                        <div class="activity-item">
+                            <div>
+                                <div class="activity-label">🔥 超激しい運動</div>
+                                <div class="activity-desc">1日2回の運動・肉体労働</div>
+                            </div>
+                            <div class="activity-value" id="cal5">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="calorieWarning" style="text-align: center; color: #999; padding: 40px 20px;">
+                    プロフィールと体重を記録すると<br>推奨カロリーが表示されます
+                </div>
             </div>
 
             <!-- 体重記録 -->
@@ -456,6 +595,67 @@
             display.classList.add('show');
         }
 
+        // 年齢計算
+        function calculateAge(birthday) {
+            const today = new Date();
+            const birthDate = new Date(birthday);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            return age;
+        }
+
+        // カロリー計算（ミフリン・セントジョア方程式）
+        function calculateCalories(profile, currentWeight) {
+            if (!profile || !currentWeight || !profile.birthday || !profile.gender || !profile.height) {
+                document.getElementById('calorieDisplay').classList.remove('show');
+                document.getElementById('calorieWarning').style.display = 'block';
+                return;
+            }
+
+            const age = calculateAge(profile.birthday);
+            const height = profile.height;
+            const weight = currentWeight;
+            const gender = profile.gender;
+
+            // 基礎代謝量（BMR）計算
+            let bmr;
+            if (gender === 'male') {
+                bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+            } else if (gender === 'female') {
+                bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+            } else {
+                // その他の場合は平均値を使用
+                bmr = 10 * weight + 6.25 * height - 5 * age - 78;
+            }
+
+            bmr = Math.round(bmr);
+
+            // 活動レベル係数
+            const activityLevels = [
+                { multiplier: 1.2, id: 'cal1' },    // 座りがち
+                { multiplier: 1.375, id: 'cal2' },  // 軽い運動
+                { multiplier: 1.55, id: 'cal3' },   // 中程度
+                { multiplier: 1.725, id: 'cal4' },  // 激しい運動
+                { multiplier: 1.9, id: 'cal5' }     // 超激しい運動
+            ];
+
+            // BMRと推奨カロリーを表示
+            document.getElementById('bmrValue').textContent = bmr.toLocaleString();
+            
+            activityLevels.forEach(level => {
+                const calories = Math.round(bmr * level.multiplier);
+                document.getElementById(level.id).textContent = calories.toLocaleString() + ' kcal';
+            });
+
+            document.getElementById('calorieDisplay').classList.add('show');
+            document.getElementById('calorieWarning').style.display = 'none';
+        }
+
         // プロフィール保存
         function saveProfile() {
             const profile = {
@@ -528,6 +728,10 @@
             updateStats(profile, records);
             updateChart(records, currentPeriod);
             updateRecordsList(records);
+
+            // カロリー計算
+            const currentWeight = records.length > 0 ? records[records.length - 1].weight : null;
+            calculateCalories(profile, currentWeight);
         }
 
         // 統計更新
